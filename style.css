@@ -79,7 +79,7 @@ button {
 .app-shell {
   width: min(1100px, calc(100% - 2rem));
   margin: 0 auto;
-  padding: 2rem 0 3rem;
+  padding: 6.5rem 0 3rem;
 }
 
 .hero,
@@ -89,11 +89,18 @@ button {
 }
 
 .hero {
+  position: fixed;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1100px, calc(100% - 2rem));
+  z-index: 20;
   padding: 1rem 1.25rem;
   border-radius: 28px;
   background: var(--hero-bg);
   box-shadow: var(--shadow);
   border: 1px solid rgba(185, 144, 91, 0.35);
+  backdrop-filter: blur(8px);
 }
 
 .top-bar {
@@ -406,10 +413,9 @@ body[data-theme="dark"] .result-card.result-error {
 @media (max-width: 760px) {
   .app-shell {
     width: min(100% - 0.75rem, 1100px);
-    padding: 0.75rem 0 6rem;
+    padding: 5.75rem 0 6rem;
   }
 
-  .hero,
   .panel {
     padding: 1rem;
     border-radius: 16px;
@@ -417,10 +423,10 @@ body[data-theme="dark"] .result-card.result-error {
   }
 
   .hero {
-    position: sticky;
     top: 0.5rem;
-    z-index: 10;
-    backdrop-filter: blur(8px);
+    width: min(100% - 0.75rem, 1100px);
+    padding: 1rem;
+    border-radius: 16px;
   }
 
   .top-bar {
