@@ -1,5 +1,7 @@
-const destinationIds = [1, 2, 3];
-const mismatchMessage = "Grid type mismatch: destination and reference must both be RSO or both be UTM.";
+const destinationIds = [1, 2, 3, 4];
+const mismatchMessage = "Reference grid cannot be matched to the destination type with a valid 6-digit RSO/UTM conversion.";
+const modeStorageKey = "gec-calc-mode";
+let currentMode = "PCP";
 
 const referenceInputs = {
   easting: document.getElementById("reference-easting"),
@@ -8,6 +10,9 @@ const referenceInputs = {
   northingError: document.getElementById("reference-northing-error"),
   sectionError: document.getElementById("reference-section-error"),
   typeValue: document.getElementById("reference-type-value"),
+  conversionType: document.getElementById("reference-conversion-type"),
+  conversionEasting: document.getElementById("reference-conversion-easting"),
+  conversionNorthing: document.getElementById("reference-conversion-northing"),
 };
 
 const destinationInputs = destinationIds.map((id) => ({
@@ -23,8 +28,17 @@ const resultsList = document.getElementById("results-list");
 const resultsEmpty = document.getElementById("results-empty");
 const calculateButton = document.getElementById("calculate-button");
 const resetButton = document.getElementById("reset-button");
+const modeToggle = document.getElementById("mode-toggle");
 const themeToggle = document.getElementById("theme-toggle");
 const themeStorageKey = "gec-calc-theme";
+
+function getActiveDestinationCount() {
+  return currentMode === "BCP" ? 4 : 3;
+}
+
+function getActiveDestinationInputs() {
+  return destinationInputs.slice(0, getActiveDestinationCount());
+}
 
 function isDigitsOnly(value) {
   return /^\d+$/.test(value);
@@ -67,6 +81,56 @@ function detectGridType(easting) {
   }
 
   return null;
+}
+
+function isSixDigitGridValue(value) {
+  return Number.isInteger(value) && value >= 0 && String(value).length === 6;
+}
+
+function formatGridCoordinate(value) {
+  if (!Number.isFinite(value)) {
+    return "-";
+  }
+
+  const absoluteValue = Math.abs(Math.trunc(value)).toString().padStart(6, "0");
+  return value < 0 ? `-${absoluteValue}` : absoluteValue;
+}
+
+function convertReferenceGrid(reference) {
+  if (!reference.type || reference.normalizedEasting === null || reference.normalizedNorthing === null) {
+    return null;
+  }
+
+  let converted = null;
+
+  if (reference.type === "RSO") {
+    converted = {
+      type: "UTM",
+      easting: reference.normalizedEasting - 278543,
+      northing: reference.normalizedNorthing - 37,
+    };
+  }
+
+  if (reference.type === "UTM") {
+    converted = {
+      type: "RSO",
+      easting: reference.normalizedEasting + 278543,
+      northing: reference.normalizedNorthing + 37,
+    };
+  }
+
+  if (!converted) {
+    return null;
+  }
+
+  return {
+    ...converted,
+    isValid: (
+      isSixDigitGridValue(converted.easting)
+      && isSixDigitGridValue(converted.northing)
+      && detectGridType(converted.easting) === converted.type
+    ),
+  };
 }
 
 function validateReferenceGrid(easting, northing) {
@@ -216,18 +280,51 @@ function convertDegreesToMils(angleDeg) {
   return angleDeg * 17.78;
 }
 
+function resolveReferenceForDestination(destination, reference) {
+  if (!reference.type) {
+    return null;
+  }
+
+  if (destination.type === reference.type) {
+    return {
+      normalizedEasting: reference.normalizedEasting,
+      normalizedNorthing: reference.normalizedNorthing,
+      type: reference.type,
+      wasConverted: false,
+    };
+  }
+
+  const convertedReference = convertReferenceGrid(reference);
+  if (convertedReference?.isValid && convertedReference.type === destination.type) {
+    return {
+      normalizedEasting: convertedReference.easting,
+      normalizedNorthing: convertedReference.northing,
+      type: convertedReference.type,
+      wasConverted: true,
+    };
+  }
+
+  return null;
+}
+
 function processDestination(destination, reference) {
   if (destination.status === "blank" || destination.errors.length > 0) {
     return destination;
   }
 
-  if (!reference.type || destination.type !== reference.type) {
+  const effectiveReference = resolveReferenceForDestination(destination, reference);
+  if (!effectiveReference) {
     destination.errors.push(mismatchMessage);
     destination.status = "invalid";
     return destination;
   }
 
-  const { dE, dN } = calculateDelta(destination, reference);
+  destination.referenceTypeUsed = effectiveReference.type;
+  if (effectiveReference.wasConverted) {
+    destination.note = `Calculated using reference converted from ${reference.type} to ${effectiveReference.type}.`;
+  }
+
+  const { dE, dN } = calculateDelta(destination, effectiveReference);
   destination.dE = dE;
   destination.dN = dN;
   destination.distance = calculateDistance(dE, dN);
@@ -235,7 +332,9 @@ function processDestination(destination, reference) {
   if (dE === 0 && dN === 0) {
     destination.angleDeg = 0;
     destination.angleMil = 0;
-    destination.note = "Destination equals reference.";
+    destination.note = effectiveReference.wasConverted
+      ? `${destination.note} Destination equals reference.`
+      : "Destination equals reference.";
     destination.status = "same-location";
     return destination;
   }
@@ -272,6 +371,21 @@ function renderReferenceValidation(reference) {
   ) || "";
 
   referenceInputs.typeValue.textContent = reference.type ? reference.type : "Awaiting valid input";
+
+  const convertedReference = convertReferenceGrid(reference);
+  if (convertedReference?.isValid) {
+    referenceInputs.conversionType.textContent = `${reference.type} -> ${convertedReference.type}`;
+    referenceInputs.conversionEasting.textContent = formatGridCoordinate(convertedReference.easting);
+    referenceInputs.conversionNorthing.textContent = formatGridCoordinate(convertedReference.northing);
+  } else if (convertedReference) {
+    referenceInputs.conversionType.textContent = `${reference.type} -> ${convertedReference.type} unavailable`;
+    referenceInputs.conversionEasting.textContent = formatGridCoordinate(convertedReference.easting);
+    referenceInputs.conversionNorthing.textContent = formatGridCoordinate(convertedReference.northing);
+  } else {
+    referenceInputs.conversionType.textContent = "Awaiting valid reference grid";
+    referenceInputs.conversionEasting.textContent = "-";
+    referenceInputs.conversionNorthing.textContent = "-";
+  }
 }
 
 function buildDestinationPreview(destination) {
@@ -298,6 +412,14 @@ function renderDestinationValidation(destination) {
   } else if (destination.status !== "blank") {
     row.card.classList.add("has-success");
   }
+}
+
+function resetDestinationRow(row) {
+  row.easting.value = "";
+  row.northing.value = "";
+  row.card.classList.remove("has-error", "has-success");
+  row.error.textContent = "";
+  row.preview.textContent = "Leave blank to ignore this row.";
 }
 
 function clearResults() {
@@ -336,7 +458,7 @@ function renderResults(results, reference) {
       ["Normalized Easting", result.normalizedEasting ?? "—"],
       ["Normalized Northing", result.normalizedNorthing ?? "—"],
       ["Destination Type", result.type || "—"],
-      ["Reference Type", reference.type || "—"],
+      ["Reference Type", result.referenceTypeUsed || reference.type || "—"],
       ["dE", result.dE ?? "—"],
       ["dN", result.dN ?? "—"],
       ["Angle (deg)", typeof result.angleDeg === "number" ? formatNumber(result.angleDeg) : "—"],
@@ -383,7 +505,7 @@ function getReferenceInputValues() {
 }
 
 function getDestinationInputValues() {
-  return destinationInputs.map((row) => ({
+  return getActiveDestinationInputs().map((row) => ({
     id: row.id,
     easting: row.easting.value.trim(),
     northing: row.northing.value.trim(),
@@ -419,14 +541,45 @@ function resetForm() {
   referenceInputs.eastingError.textContent = "";
   referenceInputs.northingError.textContent = "";
   referenceInputs.sectionError.textContent = "";
+  referenceInputs.conversionType.textContent = "Awaiting valid reference grid";
+  referenceInputs.conversionEasting.textContent = "-";
+  referenceInputs.conversionNorthing.textContent = "-";
 
   destinationInputs.forEach((row) => {
-    row.easting.value = "";
-    row.northing.value = "";
+    resetDestinationRow(row);
   });
 
   resetDestinationStates();
   clearResults();
+}
+
+function applyMode(mode) {
+  currentMode = mode === "BCP" ? "BCP" : "PCP";
+  const isBcp = currentMode === "BCP";
+  modeToggle.setAttribute("aria-pressed", String(isBcp));
+  modeToggle.setAttribute("aria-label", isBcp ? "BCP mode selected" : "PCP mode selected");
+  modeToggle.setAttribute("title", isBcp ? "BCP mode selected" : "PCP mode selected");
+
+  destinationInputs.forEach((row) => {
+    const isActive = row.id <= getActiveDestinationCount();
+    row.card.classList.toggle("is-hidden", !isActive);
+
+    if (!isActive) {
+      resetDestinationRow(row);
+    }
+  });
+
+  clearResults();
+}
+
+function toggleMode() {
+  const nextMode = currentMode === "PCP" ? "BCP" : "PCP";
+  applyMode(nextMode);
+  window.localStorage.setItem(modeStorageKey, nextMode);
+}
+
+function initializeMode() {
+  applyMode(window.localStorage.getItem(modeStorageKey) || "PCP");
 }
 
 function applyTheme(theme) {
@@ -472,6 +625,7 @@ function handleCalculate() {
 
 calculateButton.addEventListener("click", handleCalculate);
 resetButton.addEventListener("click", resetForm);
+modeToggle.addEventListener("click", toggleMode);
 themeToggle.addEventListener("click", toggleTheme);
 
 referenceInputs.easting.addEventListener("input", updateLiveReferenceType);
@@ -482,5 +636,6 @@ destinationInputs.forEach((row) => {
   row.northing.addEventListener("input", () => updateLiveDestinationPreview(row.id));
 });
 
+initializeMode();
 initializeTheme();
 resetDestinationStates();
