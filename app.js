@@ -251,6 +251,13 @@ function formatNumber(value) {
   return value.toFixed(2);
 }
 
+function formatDistance(value) {
+  return `${new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value)}m`;
+}
+
 function setFieldState(input, messageElement, message) {
   input.classList.toggle("input-invalid", Boolean(message));
   messageElement.textContent = message || "";
@@ -318,7 +325,12 @@ function renderResults(results, reference) {
         : "Needs attention";
     const resultClass = isCalculated ? "result-success" : "result-error";
 
-    const metrics = [
+    const summaryMetrics = [
+      ["Distance (meters)", typeof result.distance === "number" ? formatDistance(result.distance) : "—"],
+      ["Angle (mils)", typeof result.angleMil === "number" ? formatNumber(result.angleMil) : "—"],
+    ];
+
+    const detailMetrics = [
       ["Raw Easting", result.rawEasting || "—"],
       ["Raw Northing", result.rawNorthing || "—"],
       ["Normalized Easting", result.normalizedEasting ?? "—"],
@@ -327,12 +339,17 @@ function renderResults(results, reference) {
       ["Reference Type", reference.type || "—"],
       ["dE", result.dE ?? "—"],
       ["dN", result.dN ?? "—"],
-      ["Distance", typeof result.distance === "number" ? formatNumber(result.distance) : "—"],
       ["Angle (deg)", typeof result.angleDeg === "number" ? formatNumber(result.angleDeg) : "—"],
-      ["Angle (mils)", typeof result.angleMil === "number" ? formatNumber(result.angleMil) : "—"],
     ];
 
-    const metricsMarkup = metrics.map(([label, value]) => `
+    const summaryMarkup = summaryMetrics.map(([label, value]) => `
+      <div class="result-item">
+        <dt>${label}</dt>
+        <dd>${value}</dd>
+      </div>
+    `).join("");
+
+    const detailMarkup = detailMetrics.map(([label, value]) => `
       <div class="result-item">
         <dt>${label}</dt>
         <dd>${value}</dd>
@@ -343,7 +360,11 @@ function renderResults(results, reference) {
       <article class="result-card ${resultClass}">
         <p class="result-status ${statusClass}">${statusText}</p>
         <h3>Destination ${result.id}</h3>
-        <dl class="result-grid">${metricsMarkup}</dl>
+        <dl class="result-summary">${summaryMarkup}</dl>
+        <details class="result-details">
+          <summary>Show details</summary>
+          <dl class="result-grid">${detailMarkup}</dl>
+        </details>
         ${blockedByReference ? '<p class="result-note">Reference validation failed, so this row was not calculated.</p>' : ""}
         ${result.note ? `<p class="result-note">${result.note}</p>` : ""}
         ${result.errors.length > 0 ? `<p class="result-errors">${result.errors.join(" ")}</p>` : ""}
