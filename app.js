@@ -533,24 +533,16 @@ function resetDestinationStates() {
 }
 
 function resetForm() {
-  referenceInputs.easting.value = "";
-  referenceInputs.northing.value = "";
-  referenceInputs.typeValue.textContent = "Awaiting valid input";
-  referenceInputs.easting.classList.remove("input-invalid");
-  referenceInputs.northing.classList.remove("input-invalid");
-  referenceInputs.eastingError.textContent = "";
-  referenceInputs.northingError.textContent = "";
-  referenceInputs.sectionError.textContent = "";
-  referenceInputs.conversionType.textContent = "Awaiting valid reference grid";
-  referenceInputs.conversionEasting.textContent = "-";
-  referenceInputs.conversionNorthing.textContent = "-";
-
   destinationInputs.forEach((row) => {
     resetDestinationRow(row);
   });
 
   resetDestinationStates();
   clearResults();
+
+  const referenceValues = getReferenceInputValues();
+  const reference = validateReferenceGrid(referenceValues.easting, referenceValues.northing);
+  renderReferenceValidation(reference);
 }
 
 function applyMode(mode) {
