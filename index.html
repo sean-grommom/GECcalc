@@ -9,8 +9,47 @@
 <body>
   <header class="hero">
     <div class="top-bar">
-      <p class="eyebrow">Grid Calculator</p>
-      <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false">Dark mode</button>
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 96 64" class="brand-mark-svg" role="presentation">
+          <g fill="none" fill-rule="evenodd">
+            <path d="M20 36h38l8-12h16l8 8v16H12V42z" fill="#7E8850"/>
+            <path d="M26 18h20l10 12H31z" fill="#6E7845"/>
+            <path d="M31 10h10l5 8H34z" fill="#95A066"/>
+            <path d="M14 26l8 10H12l-4-6z" fill="#70794A"/>
+            <path d="M44 24h10v12H44zM56 26h8v10h-8zM23 37h19v11H23z" fill="#16343A"/>
+            <path d="M65 28h7v6h-7zM74 28h7v6h-7z" fill="#223E42"/>
+            <path d="M66 40h11v4H66zM40 16h4l3 7h-4z" fill="#2B2F1E"/>
+            <path d="M22 48h55" stroke="#2D3122" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="28" cy="52" r="8" fill="#23271C"/>
+            <circle cx="28" cy="52" r="4" fill="#6E7845"/>
+            <circle cx="50" cy="52" r="8" fill="#23271C"/>
+            <circle cx="50" cy="52" r="4" fill="#6E7845"/>
+            <circle cx="77" cy="52" r="8" fill="#23271C"/>
+            <circle cx="77" cy="52" r="4" fill="#6E7845"/>
+            <path d="M69 31h14l5 5v8H62v-6z" fill="#808B55"/>
+            <path d="M71 34h5v4h-5zM78 34h5v4h-5z" fill="#183339"/>
+            <path d="M36 11l4-6h4l-3 6" stroke="#2D3122" stroke-width="2" stroke-linecap="round"/>
+          </g>
+        </svg>
+      </div>
+      <div class="title-block">
+        <p class="eyebrow">Grid Calculator</p>
+        <p class="version-tag">commit 1ba203a</p>
+      </div>
+      <button
+        type="button"
+        class="theme-toggle"
+        id="theme-toggle"
+        aria-pressed="false"
+        aria-label="Toggle dark mode"
+        title="Toggle dark mode"
+      >
+        <span class="theme-toggle-track" aria-hidden="true">
+          <span class="theme-toggle-icon theme-toggle-icon-sun">☀</span>
+          <span class="theme-toggle-icon theme-toggle-icon-moon">◐</span>
+          <span class="theme-toggle-thumb"></span>
+        </span>
+      </button>
     </div>
   </header>
 

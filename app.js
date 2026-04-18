@@ -432,8 +432,9 @@ function resetForm() {
 function applyTheme(theme) {
   const nextTheme = theme === "dark" ? "dark" : "light";
   document.body.setAttribute("data-theme", nextTheme);
-  themeToggle.textContent = nextTheme === "dark" ? "Light mode" : "Dark mode";
   themeToggle.setAttribute("aria-pressed", String(nextTheme === "dark"));
+  themeToggle.setAttribute("aria-label", nextTheme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  themeToggle.setAttribute("title", nextTheme === "dark" ? "Switch to light mode" : "Switch to dark mode");
 }
 
 function toggleTheme() {
